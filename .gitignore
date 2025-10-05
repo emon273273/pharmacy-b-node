@@ -1,0 +1,13 @@
+node_modules
+.yarn
+.env
+prisma/migrations
+.idea
+./idea
+.yarnrc.yml
+create-module.js
+#test
+clean.sh
+routes/test/test.js
+downloads
+
