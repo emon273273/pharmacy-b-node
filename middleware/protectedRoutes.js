@@ -3,7 +3,7 @@ function protectedRoutes(req, res, next) {
 
     const authHeader = req.headers.authorization;
 
-    console.log('authHeader', authHeader);
+   
 
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
 

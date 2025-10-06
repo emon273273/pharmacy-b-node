@@ -1,98 +1,79 @@
-const { PrismaClient } = require("@prisma/client")
-
-const prisma = new PrismaClient()
-
-
-const bcrypt = require('bcrypt');
+const { PrismaClient } = require("@prisma/client");
+const prisma = new PrismaClient();
+const bcrypt = require("bcrypt");
 const saltRounds = 10;
 
-const endPoints = [
-
-    'user'
-]
-
+const endPoints = ["user"];
 
 const permissionTypes = ["create", "readAll", "readSingle", "update", "delete"];
 
-
 const permissions = endPoints.reduce((acc, curr) => {
+  const permission = permissionTypes.map((type) => {
+    return `${type}-${curr}`;
+  });
 
-    const permission = permissionTypes.map((type) => {
-
-        return `${type}-${curr}`
-    })
-
-    return [...acc, ...permission]
+  return [...acc, ...permission];
 }, []);
 
-
-const roles = ["admin", "operator"]
-
+const roles = ["admin", "operator"];
 
 async function main() {
+  //create role
 
-       //create role
+  await prisma.role.createMany({
+    data: roles.map((role) => {
+      return {
+        name: role,
+      };
+    }),
+  });
 
-    await prisma.Role.createMany({
+  //create admin user info
+  await prisma.user.create({
+    data: {
+      email: "admin@gmail.com",
+      password: await bcrypt.hash("admin123", saltRounds),
+      roleId: 1,
+    },
+  });
 
-        data: roles.map((role) => {
+  await prisma.permission.createMany({
+    data: permissions.map((permission) => {
+      return {
+        name: permission,
+      };
+    }),
+  });
 
-            return {
+  // role permission
 
-                name: role
-            }
-        })
-    })
+  for (let i = 1; i <= permissions.length; i++) {
+    await prisma.RolePermission.createMany({
+      data: {
+        roleId: 1,
+        permissionId: i,
+      },
+    });
 
-
-    //create admin user info
-    await prisma.user.create({
-
+    if (i == 2 || i == 3) {
+      await prisma.rolePermission.create({
         data: {
-            email: "admin@gmail.com",
-            password: await bcrypt.hash("admin123", saltRounds),
-            roleId: 1
-
-        }
-    })
-
-
-    await prisma.Permission.createMany({
-
-        data: permissions.map((permission) => {
-
-            return {
-
-                name: permission
-            }
-        })
-    })
-
- 
-    // role permission
-
-    for (let i = 1; i <= permissions.length; i++) {
-
-        await prisma.RolePermission.createMany({
-
-            data: {
-                roleId: 1,
-                permissionId: i
-            }
-        })
+          roleId: 2,
+          permissionId: i,
+        },
+      });
     }
+  }
 }
 
 main()
-    .then(async () => {
+  .then(async () => {
+    await prisma.$disconnect();
+  })
+  .catch(async (e) => {
+    console.log(e);
 
-        await prisma.$disconnect();
-    })
-    .catch(async (e) => {
+    await prisma.$disconnect();
 
-        console.log(e);
-
-        await prisma.$disconnect()
-
-        process.exit(1)
-    });
+    process.exit(1);
+  });
