@@ -3,6 +3,7 @@ const app = express();
 const dotenv = require('dotenv');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const morgan = require('morgan');
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
     max: 100, // limit each IP to 100 requests per windowMs
@@ -13,6 +14,7 @@ dotenv.config();
 app.use(limiter);
 app.use(helmet());
 app.use(express.json());
+app.use(morgan('dev'))
 
 
 //routes
@@ -20,6 +22,10 @@ app.use(express.json());
 app.use('/user', require("./routes/user/user.routes"));
 
 app.use('/settings', require("./routes/settings/setting.routes"));
+
+// medicine 
+
+app.use("medicine", require("./routes/medicine/medicine.routes"))
 
 
 

@@ -44,5 +44,65 @@ model RolePermission {
     updatedAt    DateTime   @updatedAt
 
     @@unique([roleId, permissionId])
-    
+}
+
+//medicine
+
+model Medicine {
+    id           Int     @id @default(autoincrement())
+    medicineName String
+    genericName  String
+    brandName    String
+    description  String?
+    dosageType   String // tablet, capsule, syrup, etc.
+    unitType     String //(tablet, strip, bottle, vial, ml, mg, etc.)
+
+    reorderLevel Int?     @default(0)
+    categoryId   Int
+    category     Category @relation(fields: [categoryId], references: [id])
+
+    batches Batch[]
+
+    supplierId Int?
+
+    supplier Supplier? @relation(fields: [supplierId], references: [id])
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+}
+
+model Batch {
+    id Int @id @default(autoincrement())
+
+    batchNumber       String
+    quantity          Int
+    manufacturingDate DateTime?
+    expiryDate        DateTime
+
+    purchasePrice Float
+    sellingPrice  Float
+
+    medicineId Int
+
+    medicine  Medicine @relation(fields: [medicineId], references: [id])
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+}
+
+model Category {
+    id Int @id @default(autoincrement())
+
+    name String @unique
+
+    medicine Medicine[]
+}
+
+model Supplier {
+    id      Int     @id @default(autoincrement())
+    name    String
+    email   String? @unique
+    phone   String?
+    address String?
+
+    medicines Medicine[]
 }

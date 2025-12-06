@@ -17,7 +17,6 @@ const login = async (email, password) => {
 
     })
 
-    console.log(user);
 
     if (!user) {
 
