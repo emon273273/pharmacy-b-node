@@ -1,3 +1,4 @@
+const getPagination = require("../../utils/paginateQuery");
 const prisma = require("../../utils/prisma");
 const { createMedicineSchema } = require("../../utils/schema/createMedicineSchema");
 
@@ -18,7 +19,7 @@ const createMedicine = async (req, res) => {
 
         const data = parsed.data;
 
-        // 2️⃣ Save to database
+        //create medicine with batches
         const medicine = await prisma.medicine.create({
             data: {
                 medicineName: data.medicineName,
@@ -71,19 +72,84 @@ const createMedicine = async (req, res) => {
 };
 
 const getAllMedicine = async (req, res) => {
-    try {
-        const medicines = await prisma.medicine.findMany({
-            include: {
-                batches: true,
-                category: true,
-                supplier: true,
-            },
-        });
 
-        return res.status(200).json({
-            message: "Medicines retrieved successfully",
-            medicines,
-        });
+    try {
+
+        if (req.query.query === "all") {
+            const medicines = await prisma.medicine.findMany({
+                orderBy: { id: "desc" },
+                include: {
+                    category: true,
+                    supplier: true,
+                    batches: true,
+                }
+            });
+
+
+            return res.status(200).json(medicines);
+        }
+
+
+        else if (req.query.query === "search") {
+            const { skip, limit } = getPagination(req.query);
+
+            const medicines = await prisma.medicine.findMany({
+                orderBy: { id: "desc" },
+                where: {
+                    OR: [
+                        { medicineName: { contains: req.query.key, mode: "insensitive" } },
+                        { genericName: { contains: req.query.key, mode: "insensitive" } },
+                        { brandName: { contains: req.query.key, mode: "insensitive" } },
+                    ]
+                },
+                include: {
+                    category: true,
+                    supplier: true,
+                    batches: true,
+                },
+                skip: Number(skip),
+                take: Number(limit),
+            });
+
+            const aggregations = await prisma.medicine.aggregate({
+                where: {
+                    OR: [
+                        { medicineName: { contains: req.query.key, mode: "insensitive" } },
+                        { genericName: { contains: req.query.key, mode: "insensitive" } },
+                        { brandName: { contains: req.query.key, mode: "insensitive" } },
+                    ]
+                },
+                _count: { id: true }
+            });
+
+            return res.status(200).json({
+                getAllMedicine: medicines,
+                totalMedicine: aggregations._count.id,
+            });
+        }
+        else {
+            const { skip, limit } = getPagination(req.query);
+
+            const medicines = await prisma.medicine.findMany({
+                orderBy: { id: "desc" },
+                include: {
+                    category: true,
+                    supplier: true,
+                    batches: true,
+                },
+                skip: Number(skip),
+                take: Number(limit),
+            });
+
+            const aggregations = await prisma.medicine.aggregate({
+                _count: { id: true }
+            });
+
+            return res.status(200).json({
+                getAllMedicine: medicines,
+                totalMedicine: aggregations._count.id,
+            });
+        }
     } catch (err) {
         console.error("Get All Medicines Error:", err);
 
@@ -93,6 +159,8 @@ const getAllMedicine = async (req, res) => {
             error: err.message,
         });
     }
-};
 
-module.exports = { createMedicine,getAllMedicine };
+}
+
+
+module.exports = { createMedicine, getAllMedicine };
