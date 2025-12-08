@@ -1,10 +1,10 @@
 const express = require('express');
 
-const { CreateMedicine } = require("./medicine.controller")
+const { createMedicine,getAllMedicine } = require("./medicine.controller")
 const medicineRoutes = express.Router();
 
-
-medicineRoutes.post('/', CreateMedicine);
+medicineRoutes.get("/"getAllMedicine);
+medicineRoutes.post('/', createMedicine);
 
 
 

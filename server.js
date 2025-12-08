@@ -17,15 +17,26 @@ app.use(express.json());
 app.use(morgan('dev'))
 
 
+
 //routes
 
 app.use('/user', require("./routes/user/user.routes"));
 
 app.use('/settings', require("./routes/settings/setting.routes"));
 
+
+//category
+
+app.use("/category", require("./routes/category/category.routes"))
+
+//supplier
+
+app.use("/supplier", require("./routes/supplier/supplier.routes"))
+
+
 // medicine 
 
-app.use("medicine", require("./routes/medicine/medicine.routes"))
+app.use("/medicine", require("./routes/medicine/medicine.routes"))
 
 
 
