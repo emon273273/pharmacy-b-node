@@ -1,10 +1,10 @@
 const express = require('express');
-
-const { createMedicine,getAllMedicine } = require("./medicine.controller")
+const { protectedRoutes } = require("../../middleware/protectedRoutes")
+const { createMedicine, getAllMedicine } = require("./medicine.controller")
 const medicineRoutes = express.Router();
 
-medicineRoutes.get("/",getAllMedicine);
-medicineRoutes.post('/', createMedicine);
+medicineRoutes.get("/", protectedRoutes, getAllMedicine);
+medicineRoutes.post('/', protectedRoutes, createMedicine);
 
 
 

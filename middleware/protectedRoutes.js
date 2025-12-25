@@ -3,7 +3,7 @@ function protectedRoutes(req, res, next) {
 
     const authHeader = req.headers.authorization;
 
-   
+
 
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
 
@@ -29,6 +29,6 @@ function protectedRoutes(req, res, next) {
     }
 }
 
-module.exports = protectedRoutes;
+module.exports = { protectedRoutes };
 
 
