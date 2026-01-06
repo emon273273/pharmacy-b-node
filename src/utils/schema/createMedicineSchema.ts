@@ -1,6 +1,6 @@
-const { z } = require("zod");
+import { z } from "zod";
 
-const batchSchema = z.object({
+export const batchSchema = z.object({
   batchNumber: z.string().min(1, "Batch number is required"),
   quantity: z.number().int().positive("Quantity must be positive"),
   manufacturingDate: z.string().optional(),
@@ -9,7 +9,7 @@ const batchSchema = z.object({
   sellingPrice: z.number().positive("Selling price must be positive"),
 });
 
-const createMedicineSchema = z.object({
+export const createMedicineSchema = z.object({
   medicineName: z.string().min(1, "Medicine name is required"),
   genericName: z.string().min(1, "Generic name is required"),
   brandName: z.string().min(1, "Brand name is required"),
@@ -26,7 +26,5 @@ const createMedicineSchema = z.object({
   batches: z.array(batchSchema).min(1, "At least one batch is required"),
 });
 
-module.exports = {
-  batchSchema,
-  createMedicineSchema,
-};
+export type BatchInput = z.infer<typeof batchSchema>;
+export type CreateMedicineInput = z.infer<typeof createMedicineSchema>;

@@ -1,13 +1,14 @@
-const { PrismaClient } = require("@prisma/client");
+import { PrismaClient } from "@prisma/client";
+import bcrypt from "bcrypt";
+
 const prisma = new PrismaClient();
-const bcrypt = require("bcrypt");
 const saltRounds = 10;
 
 const endPoints = ["user"];
 
 const permissionTypes = ["create", "readAll", "readSingle", "update", "delete"];
 
-const permissions = endPoints.reduce((acc, curr) => {
+const permissions = endPoints.reduce<string[]>((acc, curr) => {
   const permission = permissionTypes.map((type) => {
     return `${type}-${curr}`;
   });
@@ -18,8 +19,7 @@ const permissions = endPoints.reduce((acc, curr) => {
 const roles = ["admin", "operator"];
 
 async function main() {
-  //create role
-
+  // create role
   await prisma.role.createMany({
     data: roles.map((role) => {
       return {
@@ -28,7 +28,7 @@ async function main() {
     }),
   });
 
-  //create admin user info
+  // create admin user info
   await prisma.user.create({
     data: {
       email: "admin@gmail.com",
@@ -46,16 +46,15 @@ async function main() {
   });
 
   // role permission
-
   for (let i = 1; i <= permissions.length; i++) {
-    await prisma.RolePermission.createMany({
+    await prisma.rolePermission.createMany({
       data: {
         roleId: 1,
         permissionId: i,
       },
     });
 
-    if (i == 2 || i == 3) {
+    if (i === 2 || i === 3) {
       await prisma.rolePermission.create({
         data: {
           roleId: 2,

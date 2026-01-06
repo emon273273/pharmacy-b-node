@@ -11,3 +11,7 @@ clean.sh
 routes/test/test.js
 downloads
 
+# TypeScript
+dist
+*.tsbuildinfo
+
