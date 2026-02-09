@@ -1,6 +1,8 @@
-import { Controller, Post, Body, HttpCode, HttpStatus, BadRequestException, InternalServerErrorException, Query, Get } from '@nestjs/common';
+import { Controller, Post, Body, HttpCode, HttpStatus, BadRequestException, InternalServerErrorException, Query, Get, UseGuards } from '@nestjs/common';
 import { CategoryService } from './category.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
+import { JwtAuthGuard } from '@/auth/jwt-auth.guard';
+import { CategoryQueryDto } from './dto/category-query.dto';
 
 @Controller('category')
 export class CategoryController {
@@ -35,18 +37,12 @@ export class CategoryController {
   // get
 
   @Get()
-  async getCategories(@Query('query')query:string){
+  @UseGuards(JwtAuthGuard)
+  async getCategories(@Query()query:CategoryQueryDto){
 
     try{
 
-      if(query==='all'){
-
-        const categories =await this.categoryService.findAll();
-        return {
-          message:'Categories fetched successfully',
-          categories
-        }
-      }
+      return await this.categoryService.getAllCategories(query);
     }
     catch(error){
       const err = error as Error;
