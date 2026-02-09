@@ -10,4 +10,10 @@ export class CategoryService {
       data: { name },
     });
   }
+
+  //find all
+  async findAll(){
+
+    return this.prisma.category.findMany();
+  }
 }
