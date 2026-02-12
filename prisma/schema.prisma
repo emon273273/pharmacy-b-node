@@ -69,12 +69,13 @@ model Medicine {
 
     createdAt DateTime @default(now())
     updatedAt DateTime @updatedAt
+    @@unique([medicineName, brandName])
 }
 
 model Batch {
     id Int @id @default(autoincrement())
 
-    batchNumber       String
+    batchNumber       String @unique
     quantity          Int
     manufacturingDate DateTime?
     expiryDate        DateTime

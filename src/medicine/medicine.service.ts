@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, InternalServerErrorException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateMedicineDto } from './dto/create-medicine.dto';
 import { MedicineQueryDto } from './dto/medicine-query.dto';
@@ -24,7 +24,7 @@ interface MedicineRow {
 
 @Injectable()
 export class MedicineService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   private getPagination(query: MedicineQueryDto) {
     const page = parseInt(query.page || '1') || 1;
@@ -44,8 +44,8 @@ export class MedicineService {
         },
       });
       return medicines;
-    } 
-    
+    }
+
     if (query.query === 'search') {
       const { skip, limit } = this.getPagination(query);
 
@@ -109,42 +109,91 @@ export class MedicineService {
   }
 
   async createSingleMedicine(data: CreateMedicineDto) {
-    const medicine = await this.prisma.medicine.create({
-      data: {
-        medicineName: data.medicineName,
-        genericName: data.genericName,
-        brandName: data.brandName,
-        description: data.description,
-        dosageType: data.dosageType,
-        unitType: data.unitType,
-        reorderLevel: data.reorderLevel ?? 0,
-        categoryId: data.categoryId,
-        supplierId: data.supplierId,
-        batches: {
-          create: data.batches.map((b) => ({
-            batchNumber: b.batchNumber,
-            quantity: b.quantity,
-            manufacturingDate: b.manufacturingDate
-              ? new Date(b.manufacturingDate)
-              : null,
-            expiryDate: new Date(b.expiryDate),
-            purchasePrice: b.purchasePrice,
-            sellingPrice: b.sellingPrice,
-          })),
-        },
-      },
-      include: {
-        batches: true,
-        category: true,
-        supplier: true,
-      },
-    });
 
-    return {
-      message: 'Medicine created successfully',
-      createdMedicine: medicine,
-    };
+    const set = new Set();
+
+    for (const b of data.batches) {
+
+      const key = b.batchNumber.trim();
+      if (set.has(key)) {
+        throw new BadRequestException('Batch number must be unique');
+      }
+      set.add(key);
+    }
+
+
+    try {
+      const result = await this.prisma.$transaction(async (tx) => {
+
+        const category = await tx.category.findUnique({
+          where: {
+            id: data.categoryId
+          }
+        })
+
+        if (!category) {
+          throw new BadRequestException('Category not found');
+        }
+
+        const supplier = await tx.supplier.findUnique({
+          where: {
+            id: data.supplierId
+          }
+        })
+        if (!supplier) {
+          throw new BadRequestException('Supplier not found');
+        }
+
+        const medicine = await tx.medicine.create({
+          data: {
+            medicineName: data.medicineName,
+            genericName: data.genericName,
+            brandName: data.brandName,
+            description: data.description,
+            dosageType: data.dosageType,
+            unitType: data.unitType,
+            reorderLevel: data.reorderLevel ?? 0,
+            categoryId: data.categoryId,
+            supplierId: data.supplierId,
+            batches: {
+              create: data.batches.map((b) => ({
+                batchNumber: b.batchNumber,
+                quantity: b.quantity,
+                manufacturingDate: b.manufacturingDate
+                  ? new Date(b.manufacturingDate)
+                  : null,
+                expiryDate: new Date(b.expiryDate),
+                purchasePrice: b.purchasePrice,
+                sellingPrice: b.sellingPrice,
+              })),
+            },
+          },
+          include: {
+            batches: true,
+            category: true,
+            supplier: true,
+          },
+        });
+
+        return medicine
+      })
+
+      return {
+        message: 'Medicine created successfully',
+        createdMedicine: result
+      }
+    }
+    catch (error) {
+      const err = error as Error;
+      console.error('Create Single Medicine Error:', err);
+      throw new InternalServerErrorException({
+        status: false,
+        message: 'Server error',
+        error: err.message,
+      })
+    }
   }
+
 
   async createBulkMedicine(file: Express.Multer.File) {
     // Read the Excel file
@@ -250,3 +299,4 @@ export class MedicineService {
     };
   }
 }
+
