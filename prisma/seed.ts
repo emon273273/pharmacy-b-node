@@ -4,7 +4,7 @@ import bcrypt from "bcryptjs";
 const prisma = new PrismaClient();
 const saltRounds = 10;
 
-const endPoints = ["user"];
+const endPoints = ["user", "medicine"];
 
 const permissionTypes = ["create", "readAll", "readSingle", "update", "delete"];
 
