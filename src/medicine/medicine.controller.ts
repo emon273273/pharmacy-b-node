@@ -1,14 +1,16 @@
-import { 
-  Controller, 
-  Get, 
-  Post, 
-  Body, 
-  Query, 
-  UseGuards, 
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Query,
+  UseGuards,
   UseInterceptors,
   UploadedFile,
   BadRequestException,
-  InternalServerErrorException 
+  InternalServerErrorException,
+  Param,
+  ParseIntPipe
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { MedicineService } from './medicine.service';
@@ -18,8 +20,9 @@ import { MedicineQueryDto } from './dto/medicine-query.dto';
 
 @Controller('medicine')
 export class MedicineController {
-  constructor(private readonly medicineService: MedicineService) {}
+  constructor(private readonly medicineService: MedicineService) { }
 
+  // get all medicine
   @Get()
   @UseGuards(JwtAuthGuard)
   async getAllMedicine(@Query() query: MedicineQueryDto) {
@@ -36,6 +39,7 @@ export class MedicineController {
     }
   }
 
+  // create medicine
   @Post()
   @UseGuards(JwtAuthGuard)
   @UseInterceptors(FileInterceptor('file'))
@@ -69,4 +73,28 @@ export class MedicineController {
       });
     }
   }
+
+  // get single medicine
+
+  @Get(':id')
+  @UseGuards(JwtAuthGuard)
+  async getSingleMedicine(@Param('id',ParseIntPipe)id:number){
+
+    try{
+      const medicine =await this.medicineService.getSingleMedicine(id);
+      return medicine;
+    }
+    catch(error){
+      const err = error as Error;
+      console.error('Get Single Medicine Error:', err);
+      throw new InternalServerErrorException({
+        status: false,
+        message: 'Server error',
+        error: err.message,
+      })
+    }
+  }
+
+
+
 }

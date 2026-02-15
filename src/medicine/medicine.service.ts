@@ -33,82 +33,8 @@ export class MedicineService {
     return { skip, limit };
   }
 
-  async getAllMedicine(query: MedicineQueryDto) {
-    if (query.query === 'all') {
-      const medicines = await this.prisma.medicine.findMany({
-        orderBy: { id: 'desc' },
-        include: {
-          category: true,
-          supplier: true,
-          batches: true,
-        },
-      });
-      return medicines;
-    }
 
-    if (query.query === 'search') {
-      const { skip, limit } = this.getPagination(query);
-
-      const medicines = await this.prisma.medicine.findMany({
-        orderBy: { id: 'desc' },
-        where: {
-          OR: [
-            { medicineName: { contains: query.key || '', mode: 'insensitive' } },
-            { genericName: { contains: query.key || '', mode: 'insensitive' } },
-            { brandName: { contains: query.key || '', mode: 'insensitive' } },
-          ],
-        },
-        include: {
-          category: true,
-          supplier: true,
-          batches: true,
-        },
-        skip,
-        take: limit,
-      });
-
-      const aggregations = await this.prisma.medicine.aggregate({
-        where: {
-          OR: [
-            { medicineName: { contains: query.key || '', mode: 'insensitive' } },
-            { genericName: { contains: query.key || '', mode: 'insensitive' } },
-            { brandName: { contains: query.key || '', mode: 'insensitive' } },
-          ],
-        },
-        _count: { id: true },
-      });
-
-      return {
-        getAllMedicine: medicines,
-        totalMedicine: aggregations._count.id,
-      };
-    }
-
-    // Default: paginated list
-    const { skip, limit } = this.getPagination(query);
-
-    const medicines = await this.prisma.medicine.findMany({
-      orderBy: { id: 'desc' },
-      include: {
-        category: true,
-        supplier: true,
-        batches: true,
-      },
-      skip,
-      take: limit,
-    });
-
-    const aggregations = await this.prisma.medicine.aggregate({
-      _count: { id: true },
-    });
-
-    return {
-      getAllMedicine: medicines,
-      totalMedicine: aggregations._count.id,
-    };
-  }
-
-  async createSingleMedicine(data: CreateMedicineDto) {
+    async createSingleMedicine(data: CreateMedicineDto) {
 
     const set = new Set();
 
@@ -298,5 +224,106 @@ export class MedicineService {
       createdMedicine: result,
     };
   }
+
+
+  async getAllMedicine(query: MedicineQueryDto) {
+    if (query.query === 'all') {
+      const medicines = await this.prisma.medicine.findMany({
+        orderBy: { id: 'desc' },
+        include: {
+          category: true,
+          supplier: true,
+          batches: true,
+        },
+      });
+      return medicines;
+    }
+
+    if (query.query === 'search') {
+      const { skip, limit } = this.getPagination(query);
+
+      const medicines = await this.prisma.medicine.findMany({
+        orderBy: { id: 'desc' },
+        where: {
+          OR: [
+            { medicineName: { contains: query.key || '', mode: 'insensitive' } },
+            { genericName: { contains: query.key || '', mode: 'insensitive' } },
+            { brandName: { contains: query.key || '', mode: 'insensitive' } },
+          ],
+        },
+        include: {
+          category: true,
+          supplier: true,
+          batches: true,
+        },
+        skip,
+        take: limit,
+      });
+
+      const aggregations = await this.prisma.medicine.aggregate({
+        where: {
+          OR: [
+            { medicineName: { contains: query.key || '', mode: 'insensitive' } },
+            { genericName: { contains: query.key || '', mode: 'insensitive' } },
+            { brandName: { contains: query.key || '', mode: 'insensitive' } },
+          ],
+        },
+        _count: { id: true },
+      });
+
+      return {
+        getAllMedicine: medicines,
+        totalMedicine: aggregations._count.id,
+      };
+    }
+
+    // Default: paginated list
+    const { skip, limit } = this.getPagination(query);
+
+    const medicines = await this.prisma.medicine.findMany({
+      orderBy: { id: 'desc' },
+      include: {
+        category: true,
+        supplier: true,
+        batches: true,
+      },
+      skip,
+      take: limit,
+    });
+
+    const aggregations = await this.prisma.medicine.aggregate({
+      _count: { id: true },
+    });
+
+    return {
+      getAllMedicine: medicines,
+      totalMedicine: aggregations._count.id,
+    };
+  }
+
+  async getSingleMedicine(id: number) {
+  try {
+      const medicine = await this.prisma.medicine.findUnique({
+      where: { id },
+      include: {
+        category: true,
+        supplier: true,
+        batches: true,
+      },
+    });
+    return medicine;
+  } catch (error) {
+    const err = error as Error;
+    console.error('Get Single Medicine Error:', err);
+    throw new InternalServerErrorException({
+      status: false,
+      message: 'Server error',
+      error: err.message,
+    })
+    
+  }
+  }
+
+
 }
 
