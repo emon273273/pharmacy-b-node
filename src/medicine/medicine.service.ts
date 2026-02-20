@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, InternalServerErrorException } from '@nestjs/common';
+import { Injectable, BadRequestException, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateMedicineDto } from './dto/create-medicine.dto';
 import { MedicineQueryDto } from './dto/medicine-query.dto';
@@ -34,7 +34,7 @@ export class MedicineService {
   }
 
 
-    async createSingleMedicine(data: CreateMedicineDto) {
+  async createSingleMedicine(data: CreateMedicineDto) {
 
     const set = new Set();
 
@@ -48,76 +48,68 @@ export class MedicineService {
     }
 
 
-    try {
-      const result = await this.prisma.$transaction(async (tx) => {
 
-        const category = await tx.category.findUnique({
-          where: {
-            id: data.categoryId
-          }
-        })
+    const result = await this.prisma.$transaction(async (tx) => {
 
-        if (!category) {
-          throw new BadRequestException('Category not found');
+      const category = await tx.category.findUnique({
+        where: {
+          id: data.categoryId
         }
-
-        const supplier = await tx.supplier.findUnique({
-          where: {
-            id: data.supplierId
-          }
-        })
-        if (!supplier) {
-          throw new BadRequestException('Supplier not found');
-        }
-
-        const medicine = await tx.medicine.create({
-          data: {
-            medicineName: data.medicineName,
-            genericName: data.genericName,
-            brandName: data.brandName,
-            description: data.description,
-            dosageType: data.dosageType,
-            unitType: data.unitType,
-            reorderLevel: data.reorderLevel ?? 0,
-            categoryId: data.categoryId,
-            supplierId: data.supplierId,
-            batches: {
-              create: data.batches.map((b) => ({
-                batchNumber: b.batchNumber,
-                quantity: b.quantity,
-                manufacturingDate: b.manufacturingDate
-                  ? new Date(b.manufacturingDate)
-                  : null,
-                expiryDate: new Date(b.expiryDate),
-                purchasePrice: b.purchasePrice,
-                sellingPrice: b.sellingPrice,
-              })),
-            },
-          },
-          include: {
-            batches: true,
-            category: true,
-            supplier: true,
-          },
-        });
-
-        return medicine
       })
 
-      return {
-        message: 'Medicine created successfully',
-        createdMedicine: result
+      if (!category) {
+        throw new BadRequestException('Category not found');
       }
-    }
-    catch (error) {
-      const err = error as Error;
-      console.error('Create Single Medicine Error:', err);
-      throw new InternalServerErrorException({
-        status: false,
-        message: 'Server error',
-        error: err.message,
+
+      const supplier = await tx.supplier.findUnique({
+        where: {
+          id: data.supplierId
+        }
       })
+      if (!supplier) {
+        throw new BadRequestException('Supplier not found');
+      }
+
+      const medicine = await tx.medicine.create({
+        data: {
+          medicineName: data.medicineName,
+          genericName: data.genericName,
+          brandName: data.brandName,
+          description: data.description,
+          dosageType: data.dosageType,
+          unitType: data.unitType,
+          reorderLevel: data.reorderLevel ?? 0,
+          categoryId: data.categoryId,
+          supplierId: data.supplierId,
+          batches: {
+            create: data.batches.map((b) => ({
+              batchNumber: b.batchNumber,
+              quantity: b.quantity,
+              manufacturingDate: b.manufacturingDate
+                ? new Date(b.manufacturingDate)
+                : null,
+              expiryDate: new Date(b.expiryDate),
+              purchasePrice: b.purchasePrice,
+              sellingPrice: b.sellingPrice,
+            })),
+          },
+        },
+        include: {
+          batches: true,
+          category: true,
+          supplier: true,
+        },
+      });
+
+      return medicine
+    })
+
+    return {
+      message: 'Medicine created successfully',
+      createdMedicine: result
     }
+
+
   }
 
 
@@ -302,8 +294,8 @@ export class MedicineService {
   }
 
   async getSingleMedicine(id: number) {
-  try {
-      const medicine = await this.prisma.medicine.findUnique({
+
+    const medicine = await this.prisma.medicine.findUnique({
       where: { id },
       include: {
         category: true,
@@ -311,19 +303,13 @@ export class MedicineService {
         batches: true,
       },
     });
-    return medicine;
-  } catch (error) {
-    const err = error as Error;
-    console.error('Get Single Medicine Error:', err);
-    throw new InternalServerErrorException({
-      status: false,
-      message: 'Server error',
-      error: err.message,
-    })
-    
-  }
-  }
 
+    if (!medicine) throw new NotFoundException("medicine not found")
+    return medicine;
+  }
 
 }
+
+
+
 
