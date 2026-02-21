@@ -5,83 +5,87 @@ import { getPagination } from '@/common/utils/pagination';
 
 @Injectable()
 export class CategoryService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   async create(name: string) {
-    return this.prisma.category.create({
+    const category = await this.prisma.category.create({
       data: { name },
     });
+    return {
+      message: 'Category created successfully',
+      category,
+    };
   }
 
   //find all
-  async getAllCategories(query:CategoryQueryDto){
+  async getAllCategories(query: CategoryQueryDto) {
 
-    
-    if(query.query=='all'){
 
-      const categories=await this.prisma.category.findMany({
-        orderBy:{
-          id:'desc'
+    if (query.query == 'all') {
+
+      const categories = await this.prisma.category.findMany({
+        orderBy: {
+          id: 'desc'
         }
       });
       return {
-        message:'Categories fetched successfully',
+        message: 'Categories fetched successfully',
         categories
       }
     }
 
-    if(query.query=='search'){
+    if (query.query == 'search') {
 
-      const {skip,limit}=getPagination(query);
+      const { skip, limit } = getPagination(query);
 
-      const categories=await this.prisma.category.findMany({
-        where:{
-          name:{
-            contains:query.key || '',mode:'insensitive'
+      const categories = await this.prisma.category.findMany({
+        where: {
+          name: {
+            contains: query.key || '', mode: 'insensitive'
           },
-          
+
         },
-        orderBy:{
-            id:'desc'
-          },
+        orderBy: {
+          id: 'desc'
+        },
         skip,
-        take:limit
+        take: limit
       })
 
-      const aggregations=await this.prisma.category.aggregate({
+      const aggregations = await this.prisma.category.aggregate({
 
-        where:{
-          name:{contains:query.key || '',mode:'insensitive'}
+        where: {
+          name: { contains: query.key || '', mode: 'insensitive' }
         },
-        _count:{
-          id:true
+        _count: {
+          id: true
         }
       })
 
       return {
-        getAllCategories:categories,
-        total:aggregations._count.id
+        getAllCategories: categories,
+        total: aggregations._count.id
       }
     }
 
     // default pagination list 
 
-    const {skip,limit}=getPagination(query);
+    const { skip, limit } = getPagination(query);
 
-    const categories=await this.prisma.category.findMany({
+    const categories = await this.prisma.category.findMany({
 
-      orderBy:{
-        id:'desc'
+      orderBy: {
+        id: 'desc'
       },
       skip,
-      take:limit
+      take: limit
 
     })
 
-    const total=await this.prisma.category.count();
+    const total = await this.prisma.category.count();
 
     return {
-      getAllCategories:categories,
+      getAllCategories: categories,
       total
     }
   }
