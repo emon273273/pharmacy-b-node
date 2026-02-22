@@ -1,109 +1,387 @@
 generator client {
-    provider = "prisma-client-js"
+  provider = "prisma-client-js"
 }
 
 datasource db {
-    provider = "postgresql"
-    url      = env("DATABASE_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
-model User {
-    id Int @id @default(autoincrement())
+// ==========================================
+// YOUR EXISTING MODELS (PRESERVED)
+// ==========================================
 
-    email    String @unique
-    password String
-    Role     Role?  @relation(fields: [roleId], references: [id])
-    roleId   Int?
+model User {
+  id       Int    @id @default(autoincrement())
+  email    String @unique
+  password String
+  roleId   Int?
+
+  // --- YOUR EXISTING RELATIONS ---
+  Role Role? @relation(fields: [roleId], references: [id])
+
+  // --- NEW FIELDS ADDED FOR SYSTEM REQUIREMENTS ---
+  fullName String? // Added for Audit logs and general use
+  branchId Int? // ADDED: Required for Branch 1-M User relation
+  branch   Branch? @relation(fields: [branchId], references: [id])
+
+  // --- NEW RELATIONS ---
+  auditLogs      AuditLog[]
+  stockMovements StockMovement[]
+  sales          Sale[]
 }
 
 model Role {
-    id              Int              @id @default(autoincrement())
-    name            String           @unique
-    status          Boolean          @default(true)
-    rolePermissions RolePermission[]
-    createdAt       DateTime         @default(now())
-    updatedAt       DateTime         @updatedAt
-    user            User[]
+  id              Int              @id @default(autoincrement())
+  name            String           @unique
+  status          Boolean          @default(true)
+  rolePermissions RolePermission[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  user User[]
 }
 
 model Permission {
-    id              Int              @id @default(autoincrement())
-    name            String           @unique
-    rolePermissions RolePermission[]
-    createdAt       DateTime         @default(now())
-    updatedAt       DateTime         @updatedAt
+  id              Int              @id @default(autoincrement())
+  name            String           @unique
+  rolePermissions RolePermission[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
 }
 
 model RolePermission {
-    id           Int        @id @default(autoincrement())
-    role         Role       @relation(fields: [roleId], references: [id])
-    roleId       Int
-    permission   Permission @relation(fields: [permissionId], references: [id])
-    permissionId Int
-    createdAt    DateTime   @default(now())
-    updatedAt    DateTime   @updatedAt
+  id           Int        @id @default(autoincrement())
+  role         Role       @relation(fields: [roleId], references: [id])
+  roleId       Int
+  permission   Permission @relation(fields: [permissionId], references: [id])
+  permissionId Int
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
 
-    @@unique([roleId, permissionId])
+  @@unique([roleId, permissionId])
 }
 
-//medicine
+// --- Medicine Module ---
 
 model Medicine {
-    id           Int     @id @default(autoincrement())
-    medicineName String
-    genericName  String
-    brandName    String
-    description  String?
-    dosageType   String // tablet, capsule, syrup, etc.
-    unitType     String //(tablet, strip, bottle, vial, ml, mg, etc.)
+  id           Int     @id @default(autoincrement())
+  medicineName String
+  genericName  String
+  brandName    String
+  description  String?
+  dosageType   String // tablet, capsule, syrup
+  unitType     String // (tablet, strip, bottle)
 
-    reorderLevel Int?     @default(0)
-    categoryId   Int
-    category     Category @relation(fields: [categoryId], references: [id])
+  reorderLevel Int?     @default(0)
+  categoryId   Int
+  category     Category @relation(fields: [categoryId], references: [id])
 
-    batches Batch[]
+  // YOUR EXISTING RELATION (1-M Supplier)
+  supplierId Int?
+  supplier   Supplier? @relation(fields: [supplierId], references: [id])
 
-    supplierId Int?
+  // --- NEW RELATIONS ADDED ---
+  batches            Batch[]
+  inventories        BranchInventory[] // For Branch 1-M Inventory
+  suppliers          MedicineSupplier[] // For M-M Supplier requirement (optional, alongside 1-M)
+  stockMovements     StockMovement[]
+  purchaseOrderItems PurchaseOrderItem[]
 
-    supplier Supplier? @relation(fields: [supplierId], references: [id])
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  goodsReceiptItems GoodsReceiptItem[]
+  saleItems         SaleItem[]
+  saleReturnItems   SaleReturnItem[]
 
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
-    @@unique([medicineName, brandName])
+  @@unique([medicineName, brandName])
 }
 
 model Batch {
-    id Int @id @default(autoincrement())
+  id Int @id @default(autoincrement())
 
-    batchNumber       String @unique
-    quantity          Int
-    manufacturingDate DateTime?
-    expiryDate        DateTime
+  batchNumber       String    @unique
+  quantity          Int
+  manufacturingDate DateTime?
+  expiryDate        DateTime
 
-    purchasePrice Float
-    sellingPrice  Float
+  purchasePrice Float
+  sellingPrice  Float
 
-    medicineId Int
+  medicineId Int
+  medicine   Medicine @relation(fields: [medicineId], references: [id])
 
-    medicine  Medicine @relation(fields: [medicineId], references: [id])
-    createdAt DateTime @default(now())
-    updatedAt DateTime @updatedAt
+  // --- NEW FIELDS ADDED ---
+  branchId Int // ADDED: Batches must belong to a specific branch
+  branch   Branch @relation(fields: [branchId], references: [id])
+
+  // --- NEW RELATIONS ---
+  stockMovements    StockMovement[]
+  goodsReceiptItems GoodsReceiptItem[]
+  saleItems         SaleItem[]
+  saleReturnItems   SaleReturnItem[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Category {
-    id Int @id @default(autoincrement())
+  id   Int    @id @default(autoincrement())
+  name String @unique
 
-    name String @unique
-
-    medicine Medicine[]
+  // --- NEW RELATIONS ---
+  medicine Medicine[]
 }
 
 model Supplier {
-    id      Int     @id @default(autoincrement())
-    name    String  @unique 
-    email   String? @unique
-    phone   String?
-    address String?
+  id      Int     @id @default(autoincrement())
+  name    String  @unique
+  email   String? @unique
+  phone   String?
+  address String?
 
-    medicines Medicine[]
+  // --- NEW RELATIONS ---
+  medicines         Medicine[] // Your existing 1-M
+  supplierMedicines MedicineSupplier[] // For M-M requirement
+  purchaseOrders    PurchaseOrder[]
+}
+
+// ==========================================
+// NEW MODELS (TO FULFILL REMAINING REQUIREMENTS)
+// ==========================================
+
+// 1. Branch Management
+model Branch {
+  id        Int      @id @default(autoincrement())
+  name      String
+  address   String?
+  phone     String?
+  email     String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users          User[]
+  inventories    BranchInventory[]
+  stockMovements StockMovement[]
+  purchaseOrders PurchaseOrder[]
+  goodsReceipts  GoodsReceipt[]
+  sales          Sale[]
+  batches        Batch[]
+}
+
+// 2. Inventory Tracking (Stock per Branch)
+model BranchInventory {
+  id         Int @id @default(autoincrement())
+  quantity   Int @default(0)
+  medicineId Int
+  branchId   Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  medicine Medicine @relation(fields: [medicineId], references: [id])
+  branch   Branch   @relation(fields: [branchId], references: [id])
+
+  @@unique([branchId, medicineId]) // One stock record per medicine per branch
+}
+
+// M-M Join for Medicine-Supplier (Extra requirement) 
+// Keeping your 1-M on Medicine, adding this for flexibility
+model MedicineSupplier {
+  medicineId Int
+  supplierId Int
+  price      Float?
+
+  medicine Medicine @relation(fields: [medicineId], references: [id])
+  supplier Supplier @relation(fields: [supplierId], references: [id])
+
+  @@id([medicineId, supplierId])
+}
+
+// 3. Stock Movement (Audit Trail for Inventory)
+model StockMovement {
+  id          Int      @id @default(autoincrement())
+  type        String // PURCHASE, SALE, SALE_RETURN, ADJUSTMENT
+  quantity    Int
+  reason      String?
+  referenceNo String? // Invoice or PO number
+  medicineId  Int
+  batchId     Int
+  branchId    Int
+  userId      Int
+  createdAt   DateTime @default(now())
+
+  medicine Medicine @relation(fields: [medicineId], references: [id])
+  batch    Batch    @relation(fields: [batchId], references: [id])
+  branch   Branch   @relation(fields: [branchId], references: [id])
+  user     User     @relation(fields: [userId], references: [id])
+}
+
+// 4. Purchasing
+model PurchaseOrder {
+  id          Int      @id @default(autoincrement())
+  orderDate   DateTime @default(now())
+  status      String   @default("PENDING") // PENDING, RECEIVED, CANCELLED
+  totalAmount Float
+  supplierId  Int
+  branchId    Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  supplier      Supplier            @relation(fields: [supplierId], references: [id])
+  branch        Branch              @relation(fields: [branchId], references: [id])
+  items         PurchaseOrderItem[]
+  goodsReceipts GoodsReceipt[]
+}
+
+model PurchaseOrderItem {
+  id              Int   @id @default(autoincrement())
+  quantity        Int
+  price           Float
+  medicineId      Int
+  purchaseOrderId Int
+
+  medicine      Medicine      @relation(fields: [medicineId], references: [id])
+  purchaseOrder PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+}
+
+model GoodsReceipt {
+  id              Int      @id @default(autoincrement())
+  receiptDate     DateTime @default(now())
+  invoiceNumber   String?
+  totalAmount     Float
+  purchaseOrderId Int
+  branchId        Int
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  purchaseOrder PurchaseOrder      @relation(fields: [purchaseOrderId], references: [id])
+  branch        Branch             @relation(fields: [branchId], references: [id])
+  items         GoodsReceiptItem[]
+}
+
+model GoodsReceiptItem {
+  id             Int      @id @default(autoincrement())
+  quantity       Int
+  costPrice      Float
+  sellingPrice   Float
+  expiryDate     DateTime
+  batchId        Int // Creates/Links to Batch
+  goodsReceiptId Int
+  medicineId     Int
+
+  batch        Batch        @relation(fields: [batchId], references: [id])
+  goodsReceipt GoodsReceipt @relation(fields: [goodsReceiptId], references: [id], onDelete: Cascade)
+  medicine     Medicine     @relation(fields: [medicineId], references: [id])
+}
+
+// 5. Sales & Billing
+model Sale {
+  id            Int      @id @default(autoincrement())
+  invoiceNumber String   @unique
+  saleDate      DateTime @default(now())
+  totalAmount   Float
+  discount      Float    @default(0)
+  netAmount     Float
+  paymentMethod String // CASH, CARD
+  branchId      Int
+  patientId     Int?
+  userId        Int // Cashier
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  branch     Branch      @relation(fields: [branchId], references: [id])
+  user       User        @relation(fields: [userId], references: [id])
+  patient    Patient?    @relation(fields: [patientId], references: [id])
+  items      SaleItem[]
+  saleReturn SaleReturn?
+}
+
+model SaleItem {
+  id         Int   @id @default(autoincrement())
+  quantity   Int
+  unitPrice  Float
+  totalPrice Float
+  medicineId Int
+  batchId    Int
+  saleId     Int
+
+  sale     Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  medicine Medicine @relation(fields: [medicineId], references: [id])
+  batch    Batch    @relation(fields: [batchId], references: [id])
+}
+
+model SaleReturn {
+  id          Int      @id @default(autoincrement())
+  returnDate  DateTime @default(now())
+  reason      String?
+  totalRefund Float
+  saleId      Int      @unique
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  sale  Sale             @relation(fields: [saleId], references: [id])
+  items SaleReturnItem[]
+}
+
+model SaleReturnItem {
+  id           Int   @id @default(autoincrement())
+  quantity     Int
+  refundAmount Float
+  medicineId   Int
+  batchId      Int
+  saleReturnId Int
+
+  saleReturn SaleReturn @relation(fields: [saleReturnId], references: [id], onDelete: Cascade)
+  medicine   Medicine   @relation(fields: [medicineId], references: [id])
+  batch      Batch      @relation(fields: [batchId], references: [id])
+}
+
+// 6. Patient & Prescription
+model Patient {
+  id        Int      @id @default(autoincrement())
+  fullName  String
+  phone     String?
+  address   String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sales         Sale[]
+  prescriptions Prescription[]
+}
+
+model Prescription {
+  id               Int      @id @default(autoincrement())
+  prescriptionDate DateTime @default(now())
+  doctorName       String?
+  patientId        Int
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  patient Patient            @relation(fields: [patientId], references: [id])
+  items   PrescriptionItem[]
+}
+
+model PrescriptionItem {
+  id             Int     @id @default(autoincrement())
+  medicineName   String
+  dosage         String?
+  quantity       Int
+  prescriptionId Int
+
+  prescription Prescription @relation(fields: [prescriptionId], references: [id], onDelete: Cascade)
+}
+
+// 7. Audit Log
+model AuditLog {
+  id         Int      @id @default(autoincrement())
+  action     String
+  entityType String
+  entityId   Int
+  userId     Int
+  details    String?
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
 }
