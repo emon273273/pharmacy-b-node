@@ -22,7 +22,7 @@ model User {
 
   // --- NEW FIELDS ADDED FOR SYSTEM REQUIREMENTS ---
   fullName String? // Added for Audit logs and general use
-  branchId Int? // ADDED: Required for Branch 1-M User relation
+  branchId Int? 
   branch   Branch? @relation(fields: [branchId], references: [id])
 
   // --- NEW RELATIONS ---

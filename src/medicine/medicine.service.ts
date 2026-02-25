@@ -34,7 +34,7 @@ export class MedicineService {
   }
 
 
-  async createSingleMedicine(data: CreateMedicineDto) {
+  async createSingleMedicine(data: CreateMedicineDto, branchId: number) {
 
     const set = new Set();
 
@@ -91,6 +91,9 @@ export class MedicineService {
               expiryDate: new Date(b.expiryDate),
               purchasePrice: b.purchasePrice,
               sellingPrice: b.sellingPrice,
+              branch: {
+                connect: { id: branchId }
+              }
             })),
           },
         },

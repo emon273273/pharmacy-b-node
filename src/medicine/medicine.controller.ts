@@ -10,7 +10,8 @@ import {
   BadRequestException,
   InternalServerErrorException,
   Param,
-  ParseIntPipe
+  ParseIntPipe,
+  Req
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { MedicineService } from './medicine.service';
@@ -35,11 +36,14 @@ export class MedicineController {
   async createMedicine(
     @Query('query') queryType: string,
     @Body() createMedicineDto: CreateMedicineDto,
+    @Req() req: any,
     @UploadedFile() file?: Express.Multer.File,
   ) {
 
+    const branchId = req.user.branchId;
+
     if (queryType === 'single') {
-      return this.medicineService.createSingleMedicine(createMedicineDto);
+      return this.medicineService.createSingleMedicine(createMedicineDto, branchId);
     }
 
     if (queryType === 'createMany') {

@@ -7,12 +7,14 @@ export interface LoginResult {
   id: number;
   email: string;
   roleId: number | null;
+  branchId: number | null;
 }
 
 export interface JwtPayload {
   id: number;
   email: string;
   roleId: number | null;
+  branchId: number | null;
 }
 
 @Injectable()
@@ -20,7 +22,7 @@ export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
-  ) {}
+  ) { }
 
   async validateUser(email: string, password: string): Promise<LoginResult> {
     const user = await this.prisma.user.findUnique({
@@ -41,6 +43,7 @@ export class AuthService {
       id: user.id,
       email: user.email,
       roleId: user.roleId,
+      branchId: user.branchId,
     };
   }
 
@@ -49,6 +52,7 @@ export class AuthService {
       id: user.id,
       email: user.email,
       roleId: user.roleId,
+      branchId: user.branchId,
     };
     return this.jwtService.sign(payload);
   }
