@@ -19,6 +19,17 @@ const permissions = endPoints.reduce<string[]>((acc, curr) => {
 const roles = ["admin", "operator"];
 
 async function main() {
+  // Create default branch
+  await prisma.branch.create({
+    data: {
+      name: "Main Branch",
+      address: "123 Main Street",
+      phone: "+8801712345678",
+      email: "main@pharmacy.com",
+      isActive: true,
+    },
+  });
+
   // create role
   await prisma.role.createMany({
     data: roles.map((role) => {
@@ -34,6 +45,8 @@ async function main() {
       email: "admin@gmail.com",
       password: await bcrypt.hash("admin123", saltRounds),
       roleId: 1,
+      fullName: "Admin User",
+      branchId: 1, // Assign to Main Branch
     },
   });
 

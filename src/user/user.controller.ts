@@ -6,7 +6,7 @@ import { LoginDto } from './dto/login.dto';
 export class UserController {
   constructor(private readonly userService: UserService) { }
 
-  @Post()
+  @Post("login")
   @HttpCode(HttpStatus.OK)
   async login(@Body() loginDto: LoginDto) {
     if (!loginDto.email || !loginDto.password) {

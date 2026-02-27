@@ -1,8 +1,13 @@
-import { Injectable, BadRequestException, InternalServerErrorException, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service';
-import { CreateMedicineDto } from './dto/create-medicine.dto';
-import { MedicineQueryDto } from './dto/medicine-query.dto';
-import * as XLSX from 'xlsx';
+import {
+  Injectable,
+  BadRequestException,
+  InternalServerErrorException,
+  NotFoundException,
+} from "@nestjs/common";
+import { PrismaService } from "../prisma/prisma.service";
+import { CreateMedicineDto } from "./dto/create-medicine.dto";
+import { MedicineQueryDto } from "./dto/medicine-query.dto";
+import * as XLSX from "xlsx";
 
 interface MedicineRow {
   medicineName: string;
@@ -24,50 +29,59 @@ interface MedicineRow {
 
 @Injectable()
 export class MedicineService {
-  constructor(private readonly prisma: PrismaService) { }
+  constructor(private readonly prisma: PrismaService) {}
 
   private getPagination(query: MedicineQueryDto) {
-    const page = parseInt(query.page || '1') || 1;
-    const limit = parseInt(query.count || '10') || 10;
+    const page = parseInt(query.page || "1") || 1;
+    const limit = parseInt(query.count || "10") || 10;
     const skip = (page - 1) * limit;
     return { skip, limit };
   }
 
-
   async createSingleMedicine(data: CreateMedicineDto, branchId: number) {
+    // Validate branchId
+    if (!branchId) {
+      throw new BadRequestException(
+        "User must be assigned to a branch to create medicines",
+      );
+    }
 
     const set = new Set();
 
     for (const b of data.batches) {
-
       const key = b.batchNumber.trim();
       if (set.has(key)) {
-        throw new BadRequestException('Batch number must be unique');
+        throw new BadRequestException("Batch number must be unique");
       }
       set.add(key);
     }
 
-
-
     const result = await this.prisma.$transaction(async (tx) => {
+      // Verify branch exists
+      const branch = await tx.branch.findUnique({
+        where: { id: branchId },
+      });
+      if (!branch) {
+        throw new BadRequestException("Branch not found");
+      }
 
       const category = await tx.category.findUnique({
         where: {
-          id: data.categoryId
-        }
-      })
+          id: data.categoryId,
+        },
+      });
 
       if (!category) {
-        throw new BadRequestException('Category not found');
+        throw new BadRequestException("Category not found");
       }
 
       const supplier = await tx.supplier.findUnique({
         where: {
-          id: data.supplierId
-        }
-      })
+          id: data.supplierId,
+        },
+      });
       if (!supplier) {
-        throw new BadRequestException('Supplier not found');
+        throw new BadRequestException("Supplier not found");
       }
 
       const medicine = await tx.medicine.create({
@@ -92,8 +106,8 @@ export class MedicineService {
               purchasePrice: b.purchasePrice,
               sellingPrice: b.sellingPrice,
               branch: {
-                connect: { id: branchId }
-              }
+                connect: { id: branchId },
+              },
             })),
           },
         },
@@ -104,31 +118,32 @@ export class MedicineService {
         },
       });
 
-      return medicine
-    })
+      return medicine;
+    });
 
     return {
-      message: 'Medicine created successfully',
-      createdMedicine: result
-    }
-
-
+      message: "Medicine created successfully",
+      createdMedicine: result,
+    };
   }
-
 
   async createBulkMedicine(file: Express.Multer.File) {
     // Read the Excel file
-    const workbook = XLSX.read(file.buffer, { type: 'buffer' });
+    const workbook = XLSX.read(file.buffer, { type: "buffer" });
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
     const rows = XLSX.utils.sheet_to_json<MedicineRow>(sheet);
 
     if (!rows.length) {
-      throw new BadRequestException('No data found in the file');
+      throw new BadRequestException("No data found in the file");
     }
 
     // Extract unique category and supplier names
-    const uniqueCategoryNames = [...new Set(rows.map((r) => r.categoryName).filter(Boolean))];
-    const uniqueSupplierNames = [...new Set(rows.map((r) => r.supplierName).filter(Boolean))];
+    const uniqueCategoryNames = [
+      ...new Set(rows.map((r) => r.categoryName).filter(Boolean)),
+    ];
+    const uniqueSupplierNames = [
+      ...new Set(rows.map((r) => r.supplierName).filter(Boolean)),
+    ];
 
     // Fetch categories and suppliers
     const categories = await this.prisma.category.findMany({
@@ -146,13 +161,17 @@ export class MedicineService {
     const supplierMap = new Map(suppliers.map((s) => [s.name, s.id]));
 
     // Validate: check if any category or supplier is missing
-    const missingCategories = uniqueCategoryNames.filter((name) => !categoryMap.has(name));
-    const missingSuppliers = uniqueSupplierNames.filter((name) => !supplierMap.has(name));
+    const missingCategories = uniqueCategoryNames.filter(
+      (name) => !categoryMap.has(name),
+    );
+    const missingSuppliers = uniqueSupplierNames.filter(
+      (name) => !supplierMap.has(name),
+    );
 
     if (missingCategories.length > 0 || missingSuppliers.length > 0) {
       throw new BadRequestException({
         status: false,
-        message: 'Missing categories or suppliers',
+        message: "Missing categories or suppliers",
         missingCategories,
         missingSuppliers,
       });
@@ -215,16 +234,15 @@ export class MedicineService {
     });
 
     return {
-      message: 'Medicine created successfully',
+      message: "Medicine created successfully",
       createdMedicine: result,
     };
   }
 
-
   async getAllMedicine(query: MedicineQueryDto) {
-    if (query.query === 'all') {
+    if (query.query === "all") {
       const medicines = await this.prisma.medicine.findMany({
-        orderBy: { id: 'desc' },
+        orderBy: { id: "desc" },
         include: {
           category: true,
           supplier: true,
@@ -234,16 +252,18 @@ export class MedicineService {
       return medicines;
     }
 
-    if (query.query === 'search') {
+    if (query.query === "search") {
       const { skip, limit } = this.getPagination(query);
 
       const medicines = await this.prisma.medicine.findMany({
-        orderBy: { id: 'desc' },
+        orderBy: { id: "desc" },
         where: {
           OR: [
-            { medicineName: { contains: query.key || '', mode: 'insensitive' } },
-            { genericName: { contains: query.key || '', mode: 'insensitive' } },
-            { brandName: { contains: query.key || '', mode: 'insensitive' } },
+            {
+              medicineName: { contains: query.key || "", mode: "insensitive" },
+            },
+            { genericName: { contains: query.key || "", mode: "insensitive" } },
+            { brandName: { contains: query.key || "", mode: "insensitive" } },
           ],
         },
         include: {
@@ -258,9 +278,11 @@ export class MedicineService {
       const aggregations = await this.prisma.medicine.aggregate({
         where: {
           OR: [
-            { medicineName: { contains: query.key || '', mode: 'insensitive' } },
-            { genericName: { contains: query.key || '', mode: 'insensitive' } },
-            { brandName: { contains: query.key || '', mode: 'insensitive' } },
+            {
+              medicineName: { contains: query.key || "", mode: "insensitive" },
+            },
+            { genericName: { contains: query.key || "", mode: "insensitive" } },
+            { brandName: { contains: query.key || "", mode: "insensitive" } },
           ],
         },
         _count: { id: true },
@@ -276,7 +298,7 @@ export class MedicineService {
     const { skip, limit } = this.getPagination(query);
 
     const medicines = await this.prisma.medicine.findMany({
-      orderBy: { id: 'desc' },
+      orderBy: { id: "desc" },
       include: {
         category: true,
         supplier: true,
@@ -297,7 +319,6 @@ export class MedicineService {
   }
 
   async getSingleMedicine(id: number) {
-
     const medicine = await this.prisma.medicine.findUnique({
       where: { id },
       include: {
@@ -307,12 +328,7 @@ export class MedicineService {
       },
     });
 
-    if (!medicine) throw new NotFoundException("medicine not found")
+    if (!medicine) throw new NotFoundException("medicine not found");
     return medicine;
   }
-
 }
-
-
-
-
